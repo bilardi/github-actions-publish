@@ -1,0 +1,11 @@
+hashtag: "#TestRepo"
+content_path: "events"
+parser: generic
+mastodon:
+  instance: https://mastodon.social
+  enabled: true
+buffer:
+  enabled: true
+devto:
+  enabled: true
+instagram_check: false

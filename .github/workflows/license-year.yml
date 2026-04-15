@@ -1,0 +1,41 @@
+name: Update LICENSE year
+
+on:
+  schedule:
+    - cron: '0 0 2 1 *'  # January 2nd, 00:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-year:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update year in LICENSE
+        run: |
+          CURRENT_YEAR=$(date +%Y)
+          # Match "2026" or "2026-2025" style ranges
+          sed -i -E "s/Copyright \(c\) ([0-9]{4})(-[0-9]{4})?/Copyright (c) \1-$CURRENT_YEAR/" LICENSE
+          # If start year equals current year (first year), keep just the year
+          sed -i -E "s/Copyright \(c\) ($CURRENT_YEAR)-$CURRENT_YEAR/Copyright (c) $CURRENT_YEAR/" LICENSE
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet LICENSE; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add LICENSE
+          git commit -m "chore: update LICENSE year to $(date +%Y)"
+          git push

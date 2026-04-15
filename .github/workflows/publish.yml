@@ -1,0 +1,54 @@
+name: Publish posts
+
+on:
+  workflow_call:
+    secrets:
+      MASTODON_ACCESS_TOKEN:
+        required: false
+      BUFFER_ACCESS_TOKEN:
+        required: false
+      DEV_TO_API_KEY:
+        required: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout calling repo
+        uses: actions/checkout@v4
+
+      - name: Checkout publish scripts
+        uses: actions/checkout@v4
+        with:
+          repository: bilardi/github-actions-publish
+          path: .publish-scripts
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Parse posts
+        run: |
+          PARSER=$(python3 -c "import yaml; print(yaml.safe_load(open('social.yml')).get('parser', 'generic'))")
+          if [ "$PARSER" = "diary" ]; then
+            bash scripts/parse-diary.sh
+          else
+            bash .publish-scripts/scripts/parse-generic.sh
+          fi
+
+      - name: Publish to Mastodon
+        if: env.MASTODON_ACCESS_TOKEN != ''
+        env:
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+        run: bash .publish-scripts/scripts/mastodon-publish.sh
+
+      - name: Queue to Buffer
+        if: env.BUFFER_ACCESS_TOKEN != ''
+        env:
+          BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
+        run: bash .publish-scripts/scripts/buffer-publish.sh
+
+      - name: Publish drafts to dev.to
+        if: env.DEV_TO_API_KEY != ''
+        env:
+          DEV_TO_API_KEY: ${{ secrets.DEV_TO_API_KEY }}
+        run: bash .publish-scripts/scripts/devto-publish.sh
