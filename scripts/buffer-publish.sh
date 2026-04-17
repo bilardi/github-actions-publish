@@ -165,7 +165,7 @@ print(f'POST_IMAGE_COUNT={len(imgs)}')
   channels_with_post=$(echo "$dedup_json" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
-url = $POST_URL
+url = '$POST_URL'
 edges = data.get('data', {}).get('posts', {}).get('edges', [])
 print(f'  DEBUG dedup: searching for {url} in {len(edges)} posts', file=sys.stderr)
 for e in edges:
