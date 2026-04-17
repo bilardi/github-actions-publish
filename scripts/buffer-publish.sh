@@ -324,7 +324,7 @@ variables = {
         'schedulingType': 'automatic',
         'mode': 'addToQueue',
         'saveToDraft': True,
-        'instagramPostType': 'post'
+        'metadata': {'instagram': {'type': 'post'}}
     }
 }
 
