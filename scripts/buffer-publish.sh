@@ -167,10 +167,15 @@ import sys, json
 data = json.load(sys.stdin)
 url = $POST_URL
 edges = data.get('data', {}).get('posts', {}).get('edges', [])
+print(f'  DEBUG dedup: searching for {url} in {len(edges)} posts', file=sys.stderr)
 for e in edges:
     node = e.get('node', {})
-    if url in node.get('text', ''):
-        print(node.get('channelId', ''))
+    text = node.get('text', '')
+    cid = node.get('channelId', '')
+    found = url in text
+    print(f'  DEBUG dedup: channel={cid} found={found} text_start={repr(text[:80])}', file=sys.stderr)
+    if found:
+        print(cid)
 " 2>/dev/null || true)
 
   # Helper: create draft post on a channel
