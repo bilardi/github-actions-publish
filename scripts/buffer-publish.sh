@@ -324,7 +324,7 @@ variables = {
         'schedulingType': 'automatic',
         'mode': 'addToQueue',
         'saveToDraft': True,
-        'metadata': {'instagram': {'type': 'post'}}
+        'metadata': {'instagram': {'type': 'post', 'shouldShareToFeed': True}}
     }
 }
 
