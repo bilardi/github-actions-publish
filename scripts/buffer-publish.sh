@@ -136,81 +136,68 @@ else:
   fi
 }
 
-# Process each post
+# Save dedup data to temp file
+DEDUP_FILE=$(mktemp /tmp/buffer_dedup.XXXXXX)
+echo "$dedup_json" > "$DEDUP_FILE"
+
+# Process each post: python3 reads posts.json directly to preserve unicode
 POST_COUNT=$(python3 -c "import json; print(len(json.load(open('posts.json'))))")
 
 for i in $(seq 0 $((POST_COUNT - 1))); do
-  eval "$(python3 -c "
-import json
-post = json.load(open('posts.json'))[$i]
-print(f'POST_URL={json.dumps(post[\"url\"])}')
-print(f'POST_TITLE={json.dumps(post.get(\"title\", \"\"))}')
-print(f'LONG_TEXT={json.dumps(post.get(\"long_text\", \"\"))}')
-print(f'MEDIUM_TEXT={json.dumps(post.get(\"medium_text\", \"\"))}')
-print(f'SHORT_TEXT={json.dumps(post.get(\"short_text\", \"\"))}')
-imgs = post.get('images', [])
-for idx, img in enumerate(imgs):
-    print(f'POST_IMAGE_{idx}={json.dumps(img)}')
-print(f'POST_IMAGE_COUNT={len(imgs)}')
-")"
+  # Extract only URL for bash logging (no text through bash)
+  POST_URL=$(python3 -c "import json; print(json.load(open('posts.json'))[$i]['url'])")
 
   echo "  Processing: $POST_URL"
 
   # Instagram check on first image
-  if [ "${POST_IMAGE_COUNT:-0}" -gt 0 ]; then
-    check_instagram "$POST_IMAGE_0"
+  FIRST_IMAGE=$(python3 -c "
+import json
+imgs = json.load(open('posts.json'))[$i].get('images', [])
+print(imgs[0] if imgs else '')
+")
+  if [ -n "$FIRST_IMAGE" ]; then
+    check_instagram "$FIRST_IMAGE"
   fi
 
   # Check which channels already have this post
-  channels_with_post=$(echo "$dedup_json" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-url = '$POST_URL'
-edges = data.get('data', {}).get('posts', {}).get('edges', [])
-print(f'  DEBUG dedup: searching for {url} in {len(edges)} posts', file=sys.stderr)
+  channels_with_post=$(python3 -c "
+import json
+dedup = json.load(open('${DEDUP_FILE}'))
+url = json.load(open('posts.json'))[$i]['url']
+edges = dedup.get('data', {}).get('posts', {}).get('edges', [])
+print(f'  DEBUG dedup: searching for {url} in {len(edges)} posts', file=__import__('sys').stderr)
 for e in edges:
     node = e.get('node', {})
     text = node.get('text', '')
     cid = node.get('channelId', '')
     found = url in text
-    print(f'  DEBUG dedup: channel={cid} found={found} text_start={repr(text[:80])}', file=sys.stderr)
     if found:
+        print(f'  DEBUG dedup: channel={cid} found=True', file=__import__('sys').stderr)
         print(cid)
 " || true)
 
-  # Helper: create draft post on a channel
+  # Helper: create draft on a channel, reading text directly from posts.json
+  # Args: channel_id label text_field [extra_metadata_json]
   create_draft() {
-    local text="$1"
-    local channel_id="$2"
-    local label="$3"
+    local channel_id="$1"
+    local label="$2"
+    local text_field="$3"
+    local extra_metadata="${4:-}"
 
     if [ "$DRY_RUN" = "true" ]; then
       echo "  [DRY RUN] Would queue to Buffer (${label}): $POST_URL"
       return
     fi
 
-    # Build images array for payload
-    local images_json="[]"
-    if [ "${POST_IMAGE_COUNT:-0}" -gt 0 ]; then
-      images_json=$(python3 -c "
-import json
-imgs = []
-for idx in range(${POST_IMAGE_COUNT}):
-    import os
-    url = os.environ.get(f'POST_IMAGE_{idx}', '')
-    if url:
-        imgs.append({'url': url})
-print(json.dumps(imgs))
-")
-    fi
-
     local payload
     payload=$(python3 -c "
-import json, sys
+import json
 
-text = sys.stdin.read().strip()
+post = json.load(open('posts.json'))[$i]
+text = post.get('${text_field}', '')
 channel_id = '${channel_id}'
-images = json.loads('${images_json}')
+images = [{'url': img} for img in post.get('images', [])]
+extra_metadata = '${extra_metadata}'
 
 mutation = '''mutation CreateDraftPost(\$input: CreatePostInput!) {
   createPost(input: \$input) {
@@ -232,8 +219,11 @@ variables = {
 if images:
     variables['input']['assets'] = {'images': images}
 
+if extra_metadata:
+    variables['input']['metadata'] = json.loads(extra_metadata)
+
 print(json.dumps({'query': mutation, 'variables': variables}))
-" <<< "$text")
+")
 
     local response
     response=$(curl -s -X POST "${BUFFER_API}" \
@@ -263,135 +253,63 @@ else:
     fi
   }
 
-  # Export image URLs as env vars for the create_draft helper
-  for idx in $(seq 0 $((POST_IMAGE_COUNT - 1))); do
-    eval "export POST_IMAGE_${idx}"
-  done
+  # Check text presence for each channel type
+  has_long=$(python3 -c "import json; t=json.load(open('posts.json'))[$i].get('long_text',''); print('yes' if t.strip() else 'no')")
+  has_medium=$(python3 -c "import json; t=json.load(open('posts.json'))[$i].get('medium_text',''); print('yes' if t.strip() else 'no')")
+  has_short=$(python3 -c "import json; t=json.load(open('posts.json'))[$i].get('short_text',''); print('yes' if t.strip() else 'no')")
 
-  # Queue to long-text channels (LinkedIn) - skip if already posted
+  # Queue to LinkedIn - skip if already posted
   for cid in $long_ids; do
-    if [ -z "$LONG_TEXT" ] || [ "$LONG_TEXT" = '""' ]; then
+    if [ "$has_long" = "no" ]; then
       echo "  ERROR: long_text is empty for $POST_URL, skipping LinkedIn (add # long section)"
       break
     fi
     if echo "$channels_with_post" | grep -qF "$cid"; then
       echo "  Already in Buffer (LinkedIn): $POST_URL"
     else
-      create_draft "$LONG_TEXT" "$cid" "LinkedIn"
+      create_draft "$cid" "LinkedIn" "long_text"
     fi
   done
 
-  # Queue to Instagram with long text + instagramPostType - skip if already posted
+  # Queue to Instagram - skip if already posted
   for cid in $instagram_ids; do
-    if [ -z "$LONG_TEXT" ] || [ "$LONG_TEXT" = '""' ]; then
+    if [ "$has_long" = "no" ]; then
       echo "  ERROR: long_text is empty for $POST_URL, skipping Instagram (add # long section)"
       break
     fi
     if echo "$channels_with_post" | grep -qF "$cid"; then
       echo "  Already in Buffer (Instagram): $POST_URL"
     else
-      # Instagram needs instagramPostType in the payload
-      if [ "$DRY_RUN" = "true" ]; then
-        echo "  [DRY RUN] Would queue to Buffer (Instagram): $POST_URL"
-      else
-        images_json="[]"
-        if [ "${POST_IMAGE_COUNT:-0}" -gt 0 ]; then
-          images_json=$(python3 -c "
-import json
-imgs = []
-for idx in range(${POST_IMAGE_COUNT}):
-    import os
-    url = os.environ.get(f'POST_IMAGE_{idx}', '')
-    if url:
-        imgs.append({'url': url})
-print(json.dumps(imgs))
-")
-        fi
-
-        payload=$(python3 -c "
-import json, sys
-
-text = sys.stdin.read().strip()
-channel_id = '${cid}'
-images = json.loads('${images_json}')
-
-mutation = '''mutation CreateDraftPost(\$input: CreatePostInput!) {
-  createPost(input: \$input) {
-    ... on PostActionSuccess { post { id } }
-    ... on MutationError { message }
-  }
-}'''
-
-variables = {
-    'input': {
-        'text': text,
-        'channelId': channel_id,
-        'schedulingType': 'automatic',
-        'mode': 'addToQueue',
-        'saveToDraft': True,
-        'metadata': {'instagram': {'type': 'post', 'shouldShareToFeed': True}}
-    }
-}
-
-if images:
-    variables['input']['assets'] = {'images': images}
-
-print(json.dumps({'query': mutation, 'variables': variables}))
-" <<< "$LONG_TEXT")
-
-        response=$(curl -s -X POST "${BUFFER_API}" \
-          -H "Content-Type: application/json" \
-          -H "${AUTH_HEADER}" \
-          -d "$payload")
-
-        success=$(echo "$response" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-post = data.get('data', {}).get('createPost', {}).get('post')
-if post:
-    print('ok')
-else:
-    err = data.get('data', {}).get('createPost', {}).get('message', '')
-    errs = data.get('errors', [])
-    if errs:
-        err = errs[0].get('message', '')
-    print(f'error: {err}')
-" 2>/dev/null || echo "error: parse failed")
-
-        if [ "$success" = "ok" ]; then
-          echo "  Queued to Buffer (Instagram): $POST_URL"
-        else
-          echo "  Error queuing to Buffer Instagram: $success"
-        fi
-      fi
+      create_draft "$cid" "Instagram" "long_text" '{"instagram": {"type": "post", "shouldShareToFeed": true}}'
     fi
   done
 
-  # Queue to Threads with medium text - skip if already posted
+  # Queue to Threads - skip if already posted
   for cid in $threads_ids; do
-    if [ -z "$MEDIUM_TEXT" ] || [ "$MEDIUM_TEXT" = '""' ]; then
+    if [ "$has_medium" = "no" ]; then
       echo "  ERROR: medium_text is empty for $POST_URL, skipping Threads (add # medium section)"
       break
     fi
     if echo "$channels_with_post" | grep -qF "$cid"; then
       echo "  Already in Buffer (Threads): $POST_URL"
     else
-      create_draft "$MEDIUM_TEXT" "$cid" "Threads"
+      create_draft "$cid" "Threads" "medium_text"
     fi
   done
 
-  # Queue to Twitter with short text - skip if already posted
+  # Queue to Twitter - skip if already posted
   for cid in $twitter_ids; do
-    if [ -z "$SHORT_TEXT" ] || [ "$SHORT_TEXT" = '""' ]; then
+    if [ "$has_short" = "no" ]; then
       echo "  ERROR: short_text is empty for $POST_URL, skipping Twitter (add # short section)"
       break
     fi
     if echo "$channels_with_post" | grep -qF "$cid"; then
       echo "  Already in Buffer (Twitter): $POST_URL"
     else
-      create_draft "$SHORT_TEXT" "$cid" "Twitter"
+      create_draft "$cid" "Twitter" "short_text"
     fi
   done
 done
 
+rm -f "$DEDUP_FILE"
 echo "--- Buffer publish done ---"
