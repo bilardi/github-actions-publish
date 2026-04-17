@@ -297,7 +297,7 @@ run_test "Google Drive URL converted to direct link" python3 -c "
 import json
 posts = json.load(open('posts.json'))
 imgs = posts[0]['images']
-assert imgs[0] == 'https://drive.usercontent.google.com/download?id=ABC123&export=view', f'Expected direct link, got {imgs[0]}'
+assert imgs[0] == 'https://drive.google.com/thumbnail?id=ABC123&sz=w1920', f'Expected thumbnail link, got {imgs[0]}'
 "
 run_test "Normal URL unchanged" python3 -c "
 import json
