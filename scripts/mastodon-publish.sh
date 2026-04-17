@@ -54,7 +54,17 @@ posts = json.load(open('posts.json'))
 instance = '${MASTODON_INSTANCE}'
 token = os.environ['MASTODON_ACCESS_TOKEN']
 dry_run = '${DRY_RUN}' == 'true'
-statuses = json.load(open('${STATUSES_FILE}'))
+try:
+    statuses = json.load(open('${STATUSES_FILE}'))
+except json.JSONDecodeError as e:
+    raw = open('${STATUSES_FILE}').read()
+    pos = e.pos or 0
+    start = max(0, pos - 50)
+    end = min(len(raw), pos + 50)
+    print(f'ERROR: invalid JSON from Mastodon API at position {pos}', file=sys.stderr)
+    print(f'Context: ...{repr(raw[start:end])}...', file=sys.stderr)
+    print(f'Total response length: {len(raw)}', file=sys.stderr)
+    sys.exit(1)
 
 for post in posts:
     url = post['url']
