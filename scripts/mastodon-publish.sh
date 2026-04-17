@@ -41,9 +41,10 @@ ACCOUNT_ID=$(curl -s -H "Authorization: Bearer ${MASTODON_ACCESS_TOKEN}" \
 
 echo "Mastodon account ID: ${ACCOUNT_ID}"
 
-# Get recent statuses for dedup
-RECENT_STATUSES=$(curl -s -H "Authorization: Bearer ${MASTODON_ACCESS_TOKEN}" \
-  "${MASTODON_INSTANCE}/api/v1/accounts/${ACCOUNT_ID}/statuses?limit=40")
+# Get recent statuses for dedup (save to temp file to avoid quoting issues)
+STATUSES_FILE=$(mktemp /tmp/mastodon_statuses.XXXXXX)
+curl -s -H "Authorization: Bearer ${MASTODON_ACCESS_TOKEN}" \
+  "${MASTODON_INSTANCE}/api/v1/accounts/${ACCOUNT_ID}/statuses?limit=40" > "$STATUSES_FILE"
 
 # Process each post
 python3 -c "
@@ -53,7 +54,7 @@ posts = json.load(open('posts.json'))
 instance = '${MASTODON_INSTANCE}'
 token = os.environ['MASTODON_ACCESS_TOKEN']
 dry_run = '${DRY_RUN}' == 'true'
-statuses = json.loads('''$(echo "$RECENT_STATUSES" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)))")''')
+statuses = json.load(open('${STATUSES_FILE}'))
 
 for post in posts:
     url = post['url']
@@ -121,4 +122,5 @@ for post in posts:
         print(f'  Response: {result.stdout[:200]}')
 "
 
+rm -f "$STATUSES_FILE"
 echo "--- Mastodon publish done ---"

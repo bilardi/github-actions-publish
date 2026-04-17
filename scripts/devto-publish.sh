@@ -22,9 +22,10 @@ fi
 
 DRY_RUN="${DRY_RUN:-false}"
 
-# Get existing articles for dedup
-EXISTING_ARTICLES=$(curl -s -H "api-key: ${DEV_TO_API_KEY}" \
-  "https://dev.to/api/articles/me?per_page=100")
+# Get existing articles for dedup (save to temp file to avoid quoting issues)
+ARTICLES_FILE=$(mktemp /tmp/devto_articles.XXXXXX)
+curl -s -H "api-key: ${DEV_TO_API_KEY}" \
+  "https://dev.to/api/articles/me?per_page=100" > "$ARTICLES_FILE"
 
 # Process each post
 python3 -c "
@@ -33,7 +34,7 @@ import json, subprocess, sys, os
 posts = json.load(open('posts.json'))
 dry_run = '${DRY_RUN}' == 'true'
 api_key = os.environ['DEV_TO_API_KEY']
-existing = json.loads('''$(echo "$EXISTING_ARTICLES" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)))")''')
+existing = json.load(open('${ARTICLES_FILE}'))
 
 for post in posts:
     url = post['url']
@@ -90,4 +91,5 @@ for post in posts:
         print(f'  Error publishing to dev.to (HTTP {http_code}): {result.stdout[:200]}')
 "
 
+rm -f "$ARTICLES_FILE"
 echo "--- dev.to publish done ---"
