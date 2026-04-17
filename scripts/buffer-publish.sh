@@ -289,7 +289,7 @@ else:
       if [ "$DRY_RUN" = "true" ]; then
         echo "  [DRY RUN] Would queue to Buffer (Instagram): $POST_URL"
       else
-        local images_json="[]"
+        images_json="[]"
         if [ "${POST_IMAGE_COUNT:-0}" -gt 0 ]; then
           images_json=$(python3 -c "
 import json
@@ -303,7 +303,6 @@ print(json.dumps(imgs))
 ")
         fi
 
-        local payload
         payload=$(python3 -c "
 import json, sys
 
@@ -335,13 +334,11 @@ if images:
 print(json.dumps({'query': mutation, 'variables': variables}))
 " <<< "$LONG_TEXT")
 
-        local response
         response=$(curl -s -X POST "${BUFFER_API}" \
           -H "Content-Type: application/json" \
           -H "${AUTH_HEADER}" \
           -d "$payload")
 
-        local success
         success=$(echo "$response" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
