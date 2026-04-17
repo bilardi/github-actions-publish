@@ -68,6 +68,7 @@ data = json.load(sys.stdin)
 channels = data.get('data', {}).get('channels', [])
 twitter = []
 threads = []
+instagram = []
 long_ch = []
 all_ids = []
 for ch in channels:
@@ -79,10 +80,13 @@ for ch in channels:
         twitter.append(cid)
     elif svc == 'threads':
         threads.append(cid)
+    elif svc == 'instagram':
+        instagram.append(cid)
     else:
         long_ch.append(cid)
 print(f'twitter_ids=\"{chr(10).join(twitter)}\"')
 print(f'threads_ids=\"{chr(10).join(threads)}\"')
+print(f'instagram_ids=\"{chr(10).join(instagram)}\"')
 print(f'long_ids=\"{chr(10).join(long_ch)}\"')
 print(f'all_ids=\"{chr(10).join(all_ids)}\"')
 ")"
@@ -259,16 +263,105 @@ else:
     eval "export POST_IMAGE_${idx}"
   done
 
-  # Queue to long-text channels (LinkedIn, Instagram) - skip if already posted
+  # Queue to long-text channels (LinkedIn) - skip if already posted
   for cid in $long_ids; do
     if [ -z "$LONG_TEXT" ] || [ "$LONG_TEXT" = '""' ]; then
-      echo "  ERROR: long_text is empty for $POST_URL, skipping LinkedIn/Instagram (add # long section)"
+      echo "  ERROR: long_text is empty for $POST_URL, skipping LinkedIn (add # long section)"
       break
     fi
     if echo "$channels_with_post" | grep -qF "$cid"; then
-      echo "  Already in Buffer (long channel): $POST_URL"
+      echo "  Already in Buffer (LinkedIn): $POST_URL"
     else
-      create_draft "$LONG_TEXT" "$cid" "long"
+      create_draft "$LONG_TEXT" "$cid" "LinkedIn"
+    fi
+  done
+
+  # Queue to Instagram with long text + instagramPostType - skip if already posted
+  for cid in $instagram_ids; do
+    if [ -z "$LONG_TEXT" ] || [ "$LONG_TEXT" = '""' ]; then
+      echo "  ERROR: long_text is empty for $POST_URL, skipping Instagram (add # long section)"
+      break
+    fi
+    if echo "$channels_with_post" | grep -qF "$cid"; then
+      echo "  Already in Buffer (Instagram): $POST_URL"
+    else
+      # Instagram needs instagramPostType in the payload
+      if [ "$DRY_RUN" = "true" ]; then
+        echo "  [DRY RUN] Would queue to Buffer (Instagram): $POST_URL"
+      else
+        local images_json="[]"
+        if [ "${POST_IMAGE_COUNT:-0}" -gt 0 ]; then
+          images_json=$(python3 -c "
+import json
+imgs = []
+for idx in range(${POST_IMAGE_COUNT}):
+    import os
+    url = os.environ.get(f'POST_IMAGE_{idx}', '')
+    if url:
+        imgs.append({'url': url})
+print(json.dumps(imgs))
+")
+        fi
+
+        local payload
+        payload=$(python3 -c "
+import json, sys
+
+text = sys.stdin.read().strip()
+channel_id = '${cid}'
+images = json.loads('${images_json}')
+
+mutation = '''mutation CreateDraftPost(\$input: CreatePostInput!) {
+  createPost(input: \$input) {
+    ... on PostActionSuccess { post { id } }
+    ... on MutationError { message }
+  }
+}'''
+
+variables = {
+    'input': {
+        'text': text,
+        'channelId': channel_id,
+        'schedulingType': 'automatic',
+        'mode': 'addToQueue',
+        'saveToDraft': True,
+        'instagramPostType': 'post'
+    }
+}
+
+if images:
+    variables['input']['assets'] = {'images': images}
+
+print(json.dumps({'query': mutation, 'variables': variables}))
+" <<< "$LONG_TEXT")
+
+        local response
+        response=$(curl -s -X POST "${BUFFER_API}" \
+          -H "Content-Type: application/json" \
+          -H "${AUTH_HEADER}" \
+          -d "$payload")
+
+        local success
+        success=$(echo "$response" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+post = data.get('data', {}).get('createPost', {}).get('post')
+if post:
+    print('ok')
+else:
+    err = data.get('data', {}).get('createPost', {}).get('message', '')
+    errs = data.get('errors', [])
+    if errs:
+        err = errs[0].get('message', '')
+    print(f'error: {err}')
+" 2>/dev/null || echo "error: parse failed")
+
+        if [ "$success" = "ok" ]; then
+          echo "  Queued to Buffer (Instagram): $POST_URL"
+        else
+          echo "  Error queuing to Buffer Instagram: $success"
+        fi
+      fi
     fi
   done
 

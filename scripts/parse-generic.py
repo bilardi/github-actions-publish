@@ -68,7 +68,7 @@ def normalize_image_url(url):
     """Convert Google Drive share links to direct download URLs."""
     match = re.match(r"https://drive\.google\.com/file/d/([^/]+)/view", url)
     if match:
-        return f"https://drive.google.com/uc?export=view&id={match.group(1)}"
+        return f"https://drive.usercontent.google.com/download?id={match.group(1)}&export=view"
     return url
 
 
