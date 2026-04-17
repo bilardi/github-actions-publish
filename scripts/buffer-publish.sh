@@ -176,7 +176,7 @@ for e in edges:
     print(f'  DEBUG dedup: channel={cid} found={found} text_start={repr(text[:80])}', file=sys.stderr)
     if found:
         print(cid)
-" 2>/dev/null || true)
+" || true)
 
   # Helper: create draft post on a channel
   create_draft() {
