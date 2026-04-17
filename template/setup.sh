@@ -152,20 +152,24 @@ SOCIALEOF
   echo "Created social.yml"
 fi
 
+# Detect latest tag from github-actions-publish repo
+LATEST_TAG=$(git -C "$SCRIPT_DIR/.." describe --tags --abbrev=0 2>/dev/null || echo "main")
+echo "  Using tag: $LATEST_TAG"
+
 # Generate .github/workflows/publish.yml
 mkdir -p .github/workflows
 if safe_write .github/workflows/publish.yml; then
-  cat > .github/workflows/publish.yml << 'WFEOF'
+  cat > .github/workflows/publish.yml << WFEOF
 name: Publish posts
 on:
   workflow_dispatch:
 jobs:
   publish:
-    uses: bilardi/github-actions-publish/.github/workflows/publish.yml@v0.1.0
+    uses: bilardi/github-actions-publish/.github/workflows/publish.yml@${LATEST_TAG}
     secrets:
-      MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
-      BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-      DEV_TO_API_KEY: ${{ secrets.DEV_TO_API_KEY }}
+      MASTODON_ACCESS_TOKEN: \${{ secrets.MASTODON_ACCESS_TOKEN }}
+      BUFFER_ACCESS_TOKEN: \${{ secrets.BUFFER_ACCESS_TOKEN }}
+      DEV_TO_API_KEY: \${{ secrets.DEV_TO_API_KEY }}
 WFEOF
   echo "Created .github/workflows/publish.yml"
 fi
