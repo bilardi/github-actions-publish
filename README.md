@@ -46,7 +46,7 @@ sequenceDiagram
 - Python 3 with [PyYAML](https://pypi.org/project/PyYAML/)
 - curl
 - Accounts and tokens for the platforms you want to publish to:
-  - **Mastodon**: access token from Settings > Development > New Application
+  - **Mastodon**: access token from Settings > Development > New Application > select read, write and profile
   - **Buffer**: API key from My Organization > Apps & Integrations > API (beta) > + New Key
   - **dev.to**: API key from Settings > Extensions
 
@@ -99,6 +99,7 @@ If you prefer to set up manually instead of using `setup.sh`:
 ```yaml
 hashtag: "#YourHashtag"
 content_path: "events"
+scan_folders: 3
 parser: generic
 mastodon:
   instance: https://mastodon.social
@@ -114,6 +115,7 @@ instagram_check: false
 |-------|----------|-------------|
 | `hashtag` | yes | Fixed hashtag for the repo, added to all posts |
 | `content_path` | yes (if generic parser) | Path to date folders |
+| `scan_folders` | no (default: 3) | Number of most recent date folders to scan |
 | `parser` | no (default: generic) | `generic` or `diary` |
 | `mastodon.instance` | yes (if enabled) | Mastodon instance URL |
 | `mastodon.enabled` | no (default: false) | Enable Mastodon publishing |
@@ -244,9 +246,8 @@ Place them wherever you want in the text.
 ### Publication logic
 
 - **Trigger**: manual (`workflow_dispatch`)
-- **Folder date >= today (UTC)**: enters the folder
-- **Folder date < today**: skipped
-- **File date >= today**: publishes (if not already posted)
+- **All date folders** are scanned (folder date is the event date, not the publication date)
+- **File date >= today (UTC)**: publishes (if not already posted)
 - **File date < today**: skipped
 - **File date missing**: error
 - **Dedup**: checks if `url` is already in recent Mastodon statuses or Buffer posts (per-channel)

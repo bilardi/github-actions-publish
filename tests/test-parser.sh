@@ -92,11 +92,11 @@ for p in posts:
     assert '#python' in p['short_text'], '#python tag not found in short_text'
 "
 
-run_test "Past folder 2020-01-01 skipped" python3 -c "
+run_test "Past date file from old folder skipped" python3 -c "
 import json
 posts = json.load(open('posts.json'))
 for p in posts:
-    assert '2020' not in p['url'], 'Post from past folder was included'
+    assert 'old-event' not in p['url'], 'Post with past date from old folder was included'
 "
 
 run_test "Past file date skipped" python3 -c "

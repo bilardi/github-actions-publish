@@ -18,6 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Defaults
 HASHTAG=""
 CONTENT_PATH="events"
+SCAN_FOLDERS="3"
 MASTODON_INSTANCE="https://mastodon.social"
 MASTODON_ENABLED="true"
 BUFFER_ENABLED="true"
@@ -34,6 +35,10 @@ while [ $# -gt 0 ]; do
       ;;
     --content-path)
       CONTENT_PATH="$2"
+      shift 2
+      ;;
+    --scan-folders)
+      SCAN_FOLDERS="$2"
       shift 2
       ;;
     --mastodon-instance)
@@ -80,6 +85,7 @@ while [ $# -gt 0 ]; do
       echo ""
       echo "Optional:"
       echo "  --content-path PATH         Path for date folders (default: events)"
+      echo "  --scan-folders N            Number of most recent folders to scan (default: 3)"
       echo "  --mastodon-instance URL     Mastodon instance URL (default: https://mastodon.social)"
       echo "  --mastodon / --no-mastodon  Enable/disable Mastodon (default: enabled)"
       echo "  --buffer / --no-buffer      Enable/disable Buffer (default: enabled)"
@@ -120,6 +126,7 @@ safe_write() {
 echo "Setting up repo for github-actions-publish"
 echo "  Hashtag: $HASHTAG"
 echo "  Content path: $CONTENT_PATH"
+echo "  Scan folders: $SCAN_FOLDERS"
 echo "  Mastodon: $MASTODON_ENABLED (instance: $MASTODON_INSTANCE)"
 echo "  Buffer: $BUFFER_ENABLED"
 echo "  dev.to: $DEVTO_ENABLED"
@@ -131,6 +138,7 @@ if safe_write social.yml; then
   cat > social.yml << SOCIALEOF
 hashtag: "$HASHTAG"
 content_path: "$CONTENT_PATH"
+scan_folders: $SCAN_FOLDERS
 parser: generic
 mastodon:
   instance: $MASTODON_INSTANCE

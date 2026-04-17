@@ -150,6 +150,7 @@ def main():
 
     hashtag = config["hashtag"]
     content_path = config["content_path"]
+    scan_folders = config.get("scan_folders", 3)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     if not os.path.isdir(content_path):
@@ -159,15 +160,15 @@ def main():
     posts = []
     errors = []
 
-    for folder_name in sorted(os.listdir(content_path)):
+    # Scan most recent N date folders (descending order)
+    all_folders = [
+        f for f in sorted(os.listdir(content_path), reverse=True)
+        if os.path.isdir(os.path.join(content_path, f))
+        and re.match(r"^\d{4}-\d{2}-\d{2}$", f)
+    ]
+
+    for folder_name in all_folders[:scan_folders]:
         folder_path = os.path.join(content_path, folder_name)
-        if not os.path.isdir(folder_path):
-            continue
-        if not re.match(r"^\d{4}-\d{2}-\d{2}$", folder_name):
-            continue
-        # Skip past folders
-        if folder_name < today:
-            continue
 
         for filename in sorted(os.listdir(folder_path)):
             if not filename.endswith(".md"):
