@@ -1,0 +1,12 @@
+hashtag: "{{HASHTAG}}"
+content_path: "{{CONTENT_PATH}}"
+scan_folders: {{SCAN_FOLDERS}}
+parser: generic
+mastodon:
+  instance: {{MASTODON_INSTANCE}}
+  enabled: {{MASTODON_ENABLED}}
+buffer:
+  enabled: {{BUFFER_ENABLED}}
+devto:
+  enabled: {{DEVTO_ENABLED}}
+instagram_check: {{INSTAGRAM_CHECK}}

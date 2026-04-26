@@ -68,7 +68,7 @@ bash /path/to/github-actions-publish/template/setup.sh \
 
 This generates:
 - `social.yml` with your configuration
-- `.github/workflows/publish.yml` pointing to `bilardi/github-actions-publish@v0.1.0`
+- `.github/workflows/publish.yml` pointing to the latest tag of `bilardi/github-actions-publish`
 - `README.md` with usage docs and a `TODO: add description` placeholder
 - `LICENSE` (MIT)
 - A sample event folder with a template `.md` to fill in (if `--sample`)
@@ -208,7 +208,7 @@ Short text for Twitter (< 280 chars) {url} {hashtag} {tags}
 Full article for dev.to, free-form markdown (use ## or lower headings).
 ```
 
-Google Drive images: you can paste the share link directly (e.g. `https://drive.google.com/file/d/FILE_ID/view`); the parser converts it to a direct download URL automatically.
+Google Drive images: you can paste the share link directly (e.g. `https://drive.google.com/file/d/FILE_ID/view`); the parser converts it to a thumbnail URL (`drive.google.com/thumbnail?id=...&sz=w1920`) automatically.
 
 Frontmatter fields:
 
@@ -246,7 +246,7 @@ Place them wherever you want in the text.
 ### Publication logic
 
 - **Trigger**: manual (`workflow_dispatch`)
-- **All date folders** are scanned (folder date is the event date, not the publication date)
+- **Most recent N date folders** are scanned, controlled by `scan_folders` in `social.yml` (default: 3)
 - **File date >= today (UTC)**: publishes (if not already posted)
 - **File date < today**: skipped
 - **File date missing**: error
