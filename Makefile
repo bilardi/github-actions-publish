@@ -15,3 +15,10 @@ minor:
 .PHONY: patch # bump patch version, update CHANGELOG.md and push with tags
 patch:
 	bash scripts/release.sh patch
+
+.PHONY: changelog # update CHANGELOG.md and amend it on the commit
+changelog:
+	git-cliff --output CHANGELOG.md
+	sed -i 's/<!-- [0-9]* -->//g' CHANGELOG.md
+	git add CHANGELOG.md
+	git commit --amend --no-edit

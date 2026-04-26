@@ -52,6 +52,6 @@ sed -i 's/<!-- [0-9]* -->//g' CHANGELOG.md
 git add CHANGELOG.md
 git commit -m "chore: release $NEW"
 git tag -a "$NEW" -m "Release $NEW"
-git push && git push --tags
+git push -u origin HEAD && git push origin --tags
 
 echo "Released $NEW"
