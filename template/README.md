@@ -69,7 +69,13 @@ bash /path/to/github-actions-publish/scripts/check-length.sh {{CONTENT_PATH}}/20
 
 ### Updating setup
 
-Re-run `setup.sh` to pick up updates from github-actions-publish (e.g. new workflow version). The script asks before overwriting existing files: review the diff and keep your local changes.
+Re-run `setup.sh` to pick up updates from github-actions-publish (e.g. new workflow version):
+
+```bash
+{{SETUP_COMMAND}}
+```
+
+The script asks before overwriting existing files: review the diff and keep your local changes.
 
 ## GitHub secrets
 

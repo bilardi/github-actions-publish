@@ -165,19 +165,64 @@ fi
 REPO_NAME=$(basename "$(pwd)")
 CURRENT_YEAR=$(date +%Y)
 
+# Build setup command for the "Updating setup" section: include only non-default flags
+LINES=("bash /path/to/github-actions-publish/template/setup.sh"
+       "  --hashtag \"$HASHTAG\"")
+if [ "$CONTENT_PATH" != "events" ]; then
+  LINES+=("  --content-path $CONTENT_PATH")
+fi
+if [ "$SCAN_FOLDERS" != "3" ]; then
+  LINES+=("  --scan-folders $SCAN_FOLDERS")
+fi
+if [ "$MASTODON_INSTANCE" != "https://mastodon.social" ]; then
+  LINES+=("  --mastodon-instance $MASTODON_INSTANCE")
+fi
+if [ "$MASTODON_ENABLED" = "false" ]; then
+  LINES+=("  --no-mastodon")
+fi
+if [ "$BUFFER_ENABLED" = "false" ]; then
+  LINES+=("  --no-buffer")
+fi
+if [ "$DEVTO_ENABLED" = "true" ]; then
+  LINES+=("  --devto")
+fi
+if [ "$INSTAGRAM_CHECK" = "true" ]; then
+  LINES+=("  --instagram-check")
+fi
+
+SETUP_CMD_FILE=$(mktemp)
+LAST=$((${#LINES[@]} - 1))
+for i in "${!LINES[@]}"; do
+  if [ "$i" -lt "$LAST" ]; then
+    echo "${LINES[i]} \\"
+  else
+    echo "${LINES[i]}"
+  fi
+done > "$SETUP_CMD_FILE"
+
 if safe_write README.md; then
   sed -e "s|{{REPO_NAME}}|$REPO_NAME|g" \
       -e "s|{{CONTENT_PATH}}|$CONTENT_PATH|g" \
       -e "s|{{PUBLISH_REPO}}|$PUBLISH_REPO|g" \
+      -e "/{{SETUP_COMMAND}}/r $SETUP_CMD_FILE" \
+      -e "/{{SETUP_COMMAND}}/d" \
       "$SCRIPT_DIR/README.md" > README.md
   echo "Created README.md"
 fi
+rm -f "$SETUP_CMD_FILE"
 
 # Generate LICENSE
 if safe_write LICENSE; then
   sed -e "s|{{CURRENT_YEAR}}|$CURRENT_YEAR|g" \
       "$SCRIPT_DIR/LICENSE" > LICENSE
   echo "Created LICENSE"
+fi
+
+# Generate template/event.md
+mkdir -p template
+if safe_write template/event.md; then
+  cp "$SCRIPT_DIR/event.md" template/event.md
+  echo "Created template/event.md"
 fi
 
 # Create content directory
@@ -199,6 +244,10 @@ fi
 echo ""
 echo "Done. Next steps:"
 echo "  1. Add GitHub secrets: MASTODON_ACCESS_TOKEN, BUFFER_ACCESS_TOKEN, DEV_TO_API_KEY"
-echo "  2. Create event folders under $CONTENT_PATH/ (e.g. $CONTENT_PATH/2026-05-20/)"
-echo "  3. Write .md files using the format in template/event.md"
+echo "  2. Create event folders under $CONTENT_PATH/ (e.g. $CONTENT_PATH/${SAMPLE:-YYYY-MM-DD}/)"
+if [ -n "$SAMPLE" ]; then
+  echo "  3. Edit $CONTENT_PATH/$SAMPLE/pre.md (already created from template/event.md)"
+else
+  echo "  3. Write .md files using the format in template/event.md"
+fi
 echo "  4. Trigger the workflow from GitHub Actions (workflow_dispatch)"
