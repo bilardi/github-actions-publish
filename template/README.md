@@ -59,7 +59,15 @@ Sections are optional: include a section only if the corresponding channel is ac
 
 ### Publishing
 
-Trigger the workflow manually from GitHub Actions (`workflow_dispatch`).
+1. Commit and push the new event folder:
+
+   ```bash
+   git add {{CONTENT_PATH}}/2026-05-21/
+   git commit -m "docs: add new event"
+   git push
+   ```
+
+2. On GitHub, open `Actions` > `Publish posts` > `Run workflow`. The workflow is manual (`workflow_dispatch`).
 
 ### Checking character counts
 
