@@ -259,32 +259,40 @@ Place them wherever you want in the text.
 - With `instagram_check: true`: validates aspect ratio before publishing, warns if not 16:9
 - Constraints: images < 8MB, formats JPG/PNG/GIF/HEIC
 
+## Troubleshooting
+
+### Workflow not appearing in the Actions tab
+
+For private repos in some GitHub Free organizations, the calling `publish.yml` may not register: the Actions tab stays empty and `gh api repos/<owner>/<repo>/actions/workflows` returns `total_count: 0`. Setting the repo visibility to public unblocks the registration. To confirm the cause before changing visibility, push a minimal non-reusable workflow (with `runs-on: ubuntu-latest` and `steps:`); if that one registers but the calling workflow does not, the org is blocking calls to external reusable workflows on private repos specifically.
+
+Note: changing visibility alone does not re-validate existing workflow files. After going public, push a small change to `.github/workflows/publish.yml` (e.g., a trailing newline: `echo "" >> .github/workflows/publish.yml`) to force GitHub to revalidate and register it.
+
 ## Project structure
 
 ```
 .github/workflows/
-  publish.yml             # reusable workflow (workflow_call)
+  publish.yml  # reusable workflow (workflow_call)
 scripts/
-  parse-generic.py        # parser: .md files -> posts.json
-  parse-generic.sh        # bash wrapper for the parser
-  mastodon-publish.sh     # publish to Mastodon from posts.json
-  buffer-publish.sh       # queue to Buffer from posts.json
-  devto-publish.sh        # create dev.to drafts from posts.json
-  check-length.sh         # check character counts per section
+  parse-generic.py  # parser: .md files -> posts.json
+  parse-generic.sh  # bash wrapper for the parser
+  mastodon-publish.sh  # publish to Mastodon from posts.json
+  buffer-publish.sh  # queue to Buffer from posts.json
+  devto-publish.sh  # create dev.to drafts from posts.json
+  check-length.sh  # check character counts per section
 template/
-  setup.sh                # setup script for calling repos
-  event.md                # skeleton .md for new events
+  setup.sh  # setup script for calling repos
+  event.md  # skeleton .md for new events
 tests/
-  fixtures/               # sample social.yml and .md files
-  test-parser.sh          # parser integration tests
+  fixtures/  # sample social.yml and .md files
+  test-parser.sh  # parser integration tests
 docs/
-  diary-migration.md      # guide for migrating diary to this workflow
-  superpowers/specs/      # design spec
-  superpowers/plans/      # implementation plan
-POST.md                   # blog post (Italian, collected by diary)
-TODO.md                   # next steps
-README.md                 # this file
-LICENSE                   # MIT license
+  diary-migration.md  # guide for migrating diary to this workflow
+  superpowers/specs/  # design spec
+  superpowers/plans/  # implementation plan
+POST.md  # blog post (Italian, collected by diary)
+TODO.md  # next steps
+README.md  # this file
+LICENSE  # MIT license
 ```
 
 ## Development
@@ -318,11 +326,11 @@ Versioning follows semver. Calling repos point to a specific tag:
 uses: bilardi/github-actions-publish/.github/workflows/publish.yml@v0.1.0
 ```
 
-To release a new version:
+To release a new version (requires [git-cliff](https://git-cliff.org) in PATH; install with `uv tool install git-cliff` or `cargo install git-cliff`):
 
 1. Modify scripts, run tests
-2. Tag: `git tag v0.2.0 && git push origin v0.2.0`
-3. Calling repos update the tag in their workflow when ready
+2. Run `make patch` (or `make minor` / `make major`): bumps the tag from the latest one, regenerates `CHANGELOG.md` from conventional commits, commits with `chore: release vX.Y.Z`, tags, and pushes.
+3. Calling repos update the tag in their workflow when ready (or re-run `template/setup.sh`, which auto-detects the latest tag).
 
 ## Blog post
 
