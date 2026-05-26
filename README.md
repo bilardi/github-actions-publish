@@ -267,6 +267,8 @@ For private repos in some GitHub Free organizations, the calling `publish.yml` m
 
 Note: changing visibility alone does not re-validate existing workflow files. After going public, push a small change to `.github/workflows/publish.yml` (e.g., a trailing newline: `echo "" >> .github/workflows/publish.yml`) to force GitHub to revalidate and register it.
 
+Note: GitHub may also fail to register a workflow when it is included in the very first push to the repository, even on public repos. Symptom: `gh api repos/<owner>/<repo>/actions/workflows` returns `total_count: 0` even though `.github/workflows/publish.yml` is on the default branch. Workaround: push the initial repo without `.github/workflows/`, then add the workflow in a second commit and push. If the workflow has already been pushed in the initial commit and is not appearing, push a small change to it (e.g., add a comment line) to force GitHub to validate and register it.
+
 ## Project structure
 
 ```

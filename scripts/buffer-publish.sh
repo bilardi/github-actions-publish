@@ -196,7 +196,7 @@ import json
 post = json.load(open('posts.json'))[$i]
 text = post.get('${text_field}', '')
 channel_id = '${channel_id}'
-images = [{'url': img} for img in post.get('images', [])]
+images = [{'image': {'url': img}} for img in post.get('images', [])]
 extra_metadata = '${extra_metadata}'
 
 mutation = '''mutation CreateDraftPost(\$input: CreatePostInput!) {
@@ -217,7 +217,7 @@ variables = {
 }
 
 if images:
-    variables['input']['assets'] = {'images': images}
+    variables['input']['assets'] = images
 
 if extra_metadata:
     variables['input']['metadata'] = json.loads(extra_metadata)
