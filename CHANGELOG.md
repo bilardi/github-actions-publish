@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-05-26
+### Bug Fixes
+- Update buffer createPost assets payload to new AssetInput schema
+
 ## [0.1.14] - 2026-04-26
 ### Chores
 - Add make-based release flow
@@ -77,6 +81,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Features
 - Reusable GitHub Action for cross-posting to Mastodon, Buffer, and dev.to
 
+[0.2.0]: https://github.com/bilardi/github-actions-publish/compare/v0.1.14...v0.2.0
 [0.1.14]: https://github.com/bilardi/github-actions-publish/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/bilardi/github-actions-publish/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/bilardi/github-actions-publish/compare/v0.1.11...v0.1.12
